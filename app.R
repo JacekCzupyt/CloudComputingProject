@@ -30,14 +30,6 @@ conn <- dbConnect(
 clickme <- readPNG('clickme.png')
 
 
-file_list_item <- function(x){
-  
-  tags$li(
-    actionLink('load', str_interp("${x['name']}\n${x['updatedat']}"))
-  )
-}
-
-
 ui <- fluidPage(theme = shinytheme("yeti"),
                 
                 useShinyjs(),
@@ -75,11 +67,7 @@ ui <- fluidPage(theme = shinytheme("yeti"),
                                       });'),
                                  actionButton("save_file", "Zapisz plik", width = '100px', disabled=T),
                                  hr(),
-                                 tags$ul(
-                                   apply(dbGetQuery(
-                                     conn, str_interp("SELECT id, updatedat, name FROM ${db_table_name} WHERE userid = 42")
-                                   ), 1, function(x) file_list_item(x))
-                                 ),
+                                 uiOutput('file_list'),
                                  hr(),
                                 htmlOutput("Opis")
                                                      ),
@@ -609,6 +597,23 @@ server <- function(input, output, session) {
               HTML(paste("WSKAZÓWKA:", "Użyj strzałek na klawiaturze", "   - tym razem na boki!", sep="<br/>"))
             }
         }
+    })
+    
+    output$file_list <- renderUI({
+      
+      file_list_item <- function(x){
+        observeEvent(input[[paste0("button", x['id'])]], print(x['id']))
+        
+        tags$li(
+          actionLink(paste0("button", x['id']), str_interp("${x['name']}\n${x['updatedat']}"))
+        )
+      }
+      
+      tags$ul(
+        apply(dbGetQuery(
+          conn, str_interp("SELECT id, updatedat, name FROM ${db_table_name} WHERE userid = 42")
+        ), 1, function(x) file_list_item(x))
+      )
     })
     
    
