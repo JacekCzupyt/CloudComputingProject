@@ -21,10 +21,10 @@ db_table_name = 'files'
 conn <- dbConnect(
    drv = RPostgres::Postgres(),
    dbname = "postgres",
-   host = "localhost",
-   port=5431,
+   host = "database-1.cylgqagqtj70.us-east-1.rds.amazonaws.com",
+   port=5432,
    user = 'postgres',
-   password = 'password')
+   password = 'cloudcomputingtestpassword')
 
 
 clickme <- readPNG('clickme.png')
@@ -602,7 +602,9 @@ server <- function(input, output, session) {
     output$file_list <- renderUI({
       
       file_list_item <- function(x){
-        observeEvent(input[[paste0("button", x['id'])]], print(x['id']))
+        observeEvent(input[[paste0("button", x['id'])]], {
+          print(dbGetQuery(conn, str_interp('SELECT name FROM ${db_table_name} WHERE id = ${x["id"]}')))
+          })
         
         tags$li(
           actionLink(paste0("button", x['id']), str_interp("${x['name']}\n${x['updatedat']}"))
