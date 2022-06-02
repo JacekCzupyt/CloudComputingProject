@@ -449,7 +449,7 @@ Resources:
       VPCZoneIdentifier:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
-      HealthCheckGracePeriod: 300 
+      HealthCheckGracePeriod: 1500
       HealthCheckType: ELB
       LaunchConfigurationName: !Ref WebServerLaunchTemplate
       MinSize: !Ref InstanceCountMin
