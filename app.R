@@ -12,6 +12,18 @@ library(ggjoy)
 library(shinyjs)
 options(stringsAsFactors = FALSE)
 
+#library(DBI)
+#library(RPostgres)
+#library(RMySql)
+
+#conn <- dbConnect(
+#    drv = RPostgres::Postgres(),
+#    dbname = "postgres",
+#    host = "localhost",
+#    port=5431,
+#    user = 'postgres',
+#    password = 'password')
+
 
 clickme <- readPNG('clickme.png')
 
