@@ -30,6 +30,14 @@ conn <- dbConnect(
 clickme <- readPNG('clickme.png')
 
 
+file_list_item <- function(x){
+  
+  tags$li(
+    actionLink('load', str_interp("${x['name']}\n${x['updatedat']}"))
+  )
+}
+
+
 ui <- fluidPage(theme = shinytheme("yeti"),
                 
                 useShinyjs(),
@@ -66,6 +74,12 @@ ui <- fluidPage(theme = shinytheme("yeti"),
                                       Shiny.onInputChange("key", e.which);
                                       });'),
                                  actionButton("save_file", "Zapisz plik", width = '100px', disabled=T),
+                                 hr(),
+                                 tags$ul(
+                                   apply(dbGetQuery(
+                                     conn, str_interp("SELECT id, updatedat, name FROM ${db_table_name} WHERE userid = 42")
+                                   ), 1, function(x) file_list_item(x))
+                                 ),
                                  hr(),
                                 htmlOutput("Opis")
                                                      ),
