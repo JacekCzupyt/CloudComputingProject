@@ -57,7 +57,7 @@ Parameters:
   MasterUsername:
     Description: Database administration name.
     Type: String
-    Default: admin
+    Default: postgres
   MasterPassword:
     NoEcho: 'true'
     Description: Database password.
@@ -498,7 +498,7 @@ Resources:
     Properties:
       DBInstanceIdentifier: FinalProjDB
       DBName: finalDB
-      Engine: PostGre
+      Engine: postgres
       MasterUsername: !Ref MasterUsername
       MasterUserPassword: !Ref MasterPassword
       DBInstanceClass: db.t3.micro
