@@ -12,17 +12,19 @@ library(ggjoy)
 library(shinyjs)
 options(stringsAsFactors = FALSE)
 
-#library(DBI)
-#library(RPostgres)
+library(DBI)
+library(RPostgres)
 #library(RMySql)
 
-#conn <- dbConnect(
-#    drv = RPostgres::Postgres(),
-#    dbname = "postgres",
-#    host = "localhost",
-#    port=5431,
-#    user = 'postgres',
-#    password = 'password')
+db_table_name = 'files'
+
+conn <- dbConnect(
+   drv = RPostgres::Postgres(),
+   dbname = "postgres",
+   host = "localhost",
+   port=5431,
+   user = 'postgres',
+   password = 'password')
 
 
 clickme <- readPNG('clickme.png')
@@ -84,7 +86,7 @@ server <- function(input, output, session) {
         click = FALSE, # flaga potrzebna do klikania i odklikiwania artystow - wazna!! decyduje ktory wykres sie wyswietla 
         comeback_possible = FALSE, # do powrotu z drugiego wykresu
         maxvalue = numeric(), #tez do powrotu - okresla polozenie guzika
-        begin_date = date("2020-01-01"),   #chyba jasne - paczatkowa data zakresu
+        begin_date = date("2018-01-01"),   #chyba jasne - paczatkowa data zakresu
         end_date = date("2022-12-31"),   #koncowa
         arrow_index = 0,   #wylicza jaka wartosc nalezy dodać do '1:20' aby byli wyswieltani artysci z zakresu 1+array_index:20+array_index
         keep_range = TRUE,  #czy trzymac zakres skali na pierwszym wykresie
@@ -300,8 +302,19 @@ server <- function(input, output, session) {
             }
         )
       
-    observeEvent(input$save_file,
-                 {print(spotidane)})
+    observeEvent(input$save_file,{
+      print(spotidane)
+      tryCatch({
+        # browser()
+        file_data = as.character(toJSON(spotidane$data))
+        
+        dbAppendTable(conn, db_table_name, data.frame(userid=42, name=input$files$name, content=file_data))
+      },
+      error = function(e) {
+        # return a safeError if a parsing error occurs
+        stop(safeError(e))
+      })
+    })
         
     #
     #
