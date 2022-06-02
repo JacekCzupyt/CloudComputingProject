@@ -53,9 +53,19 @@ Parameters:
     MaxLength: 63
     AllowedPattern: ^[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?$
     Description: Enter a string. Must be alpha numeric 3-63 in length.
-    
-  KeyName:
+
+  MasterUsername:
+    Description: Database administration name.
     Type: String
+    Default: admin
+  MasterPassword:
+    NoEcho: 'true'
+    Description: Database password.
+    Type: String
+    MinLength: '8'
+    AllowedPattern: "[a-zA-Z0-9!?]*"
+    ConstraintDescription: Must only contain upper and lowercase letters and numbers
+
 
 Mappings:
   AWSInstanceType2Arch:
@@ -137,29 +147,29 @@ Resources:
         - Key: Name
           Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
 
-#  NatGateway1EIP:
-#    Type: AWS::EC2::EIP
-#    DependsOn: InternetGatewayAttachment
-#    Properties:
-#      Domain: vpc
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
 
-#  NatGateway2EIP:
-#    Type: AWS::EC2::EIP
-#    DependsOn: InternetGatewayAttachment
-#    Properties:
-#      Domain: vpc
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
 
-#  NatGateway1:
-#    Type: AWS::EC2::NatGateway
-#    Properties:
-#      AllocationId: !GetAtt NatGateway1EIP.AllocationId
-#      SubnetId: !Ref PublicSubnet1
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
 
-#  NatGateway2:
-#    Type: AWS::EC2::NatGateway
-#    Properties:
-#      AllocationId: !GetAtt NatGateway2EIP.AllocationId
-#      SubnetId: !Ref PublicSubnet2
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -198,12 +208,12 @@ Resources:
         - Key: Name
           Value: !Sub ${EnvironmentName} Private Routes (AZ1)
 
-#  DefaultPrivateRoute1:
-#    Type: AWS::EC2::Route
-#    Properties:
-#      RouteTableId: !Ref PrivateRouteTable1
-#      DestinationCidrBlock: 0.0.0.0/0
-#      NatGatewayId: !Ref NatGateway1
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
 
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -219,25 +229,18 @@ Resources:
         - Key: Name
           Value: !Sub ${EnvironmentName} Private Routes (AZ2)
 
-#  DefaultPrivateRoute2:
-#    Type: AWS::EC2::Route
-#    Properties:
-#      RouteTableId: !Ref PrivateRouteTable2
-#      DestinationCidrBlock: 0.0.0.0/0
-#     NatGatewayId: !Ref NatGateway2
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
 
   PrivateSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable2
       SubnetId: !Ref PrivateSubnet2
-
-  NoIngressSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: "no-ingress-sg"
-      GroupDescription: "Security group with no ingress rule"
-      VpcId: !Ref VPC
 
 
 #Up to this point VPC and subnets creation
@@ -255,7 +258,7 @@ Resources:
               - t2.micro
               - Arch
       InstanceType: t2.micro
-      KeyName: !Ref Keyname
+      KeyName: vockey
       SubnetId: !Ref PublicSubnet1
       SecurityGroupIds:
         - !Ref BastionSecurityGroup
@@ -288,12 +291,7 @@ Resources:
       DestinationSecurityGroupId: !Ref ApplicationSecurityGroup
 
 
-  ApplicationSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription:
-        !Sub 'Internal Security group for ${AWS::StackName}'
-      VpcId: !Ref VPC
+
 
   ApplicationAllowInboundSSHFromBastion:
     Type: AWS::EC2::SecurityGroupIngress
@@ -304,10 +302,10 @@ Resources:
       ToPort: 22
       SourceSecurityGroupId: !Ref BastionSecurityGroup
 
-  BastionKey:
+  ApplicationKey:
     Type: AWS::EC2::KeyPair
     Properties: 
-      KeyName: bastionkey
+      KeyName: app
 
 #End Bastion
 
@@ -363,7 +361,7 @@ Resources:
     DependsOn: LoadBalancerSecurityGroup
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: Capstone-Load-Balancer
+      Name: Final project Load Balancer
       Scheme: internet-facing
       Type: application
       Subnets: 
@@ -381,7 +379,7 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref ALBTargetGroup
       LoadBalancerArn: !Ref LoadBalancer
-      Port: 443
+      Port: 80
       Protocol: HTTP
 
   ALBTargetGroup:
@@ -390,7 +388,7 @@ Resources:
       HealthCheckIntervalSeconds: 30
       HealthCheckTimeoutSeconds: 25
       HealthyThresholdCount: 3
-      Port: 80
+      Port: 3838
       Protocol: HTTP
       UnhealthyThresholdCount: 5
       VpcId:
@@ -404,8 +402,8 @@ Resources:
         Ref: VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
+          FromPort: 80
+          ToPort: 80
           CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
         - IpProtocol: tcp
@@ -417,14 +415,32 @@ Resources:
 
 #Auto Scaling Group
 
-
-  AppSecurityGroup:
+  ApplicationSecurityGroup:
     Type: AWS::EC2::SecurityGroup
-    Properties: 
-      GroupDescription: ASG security group
-      GroupName: AppSecurityGroup
-      VpcId:
-        Ref: VPC
+    Properties:
+      GroupDescription:
+        !Sub 'Internal Security group for ${AWS::StackName}'
+      VpcId: !Ref VPC
+
+  AllowaccessfromLoadBalancerToApplication:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ApplicationSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3838
+      ToPort: 3838
+      SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+
+  BastionAllowToSecurity:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ApplicationSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+  
 
   WebServerAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -459,16 +475,67 @@ Resources:
               - t2.micro
               - Arch
       InstanceType: t2.micro 
+      KeyName: !Ref ApplicationKey
       SecurityGroups: 
-       - !Ref AppSecurityGroup
-      UserData: IyEvYmluL2Jhc2gKc3VkbyBlY2hvICJkZWIgaHR0cDovL2NyYW4ucnN0dWRpby5jb20vYmluL2xpbnV4L3VidW50dSB0cnVzdHkvIiB8IHN1ZG8gdGVlIC1hIC9ldGMvYXB0L3NvdXJjZXMubGlzdApncGcgLS1rZXlzZXJ2ZXIga2V5c2VydmVyLnVidW50dS5jb20gLS1yZWN2LWtleSBFMjk4QTNBODI1QzBENjVERkQ1N0NCQjY1MTcxNjYxOUUwODREQUI5CmdwZyAtYSAtLWV4cG9ydCBFMjk4QTNBODI1QzBENjVERkQ1N0NCQjY1MTcxNjYxOUUwODREQUI5CnN1ZG8geXVtIC15IHVwZGF0ZQpzdWRvIHl1bSBpbnN0YWxsIC15IGVwZWwtcmVsZWFzZQpzdWRvIHl1bSBpbnN0YWxsIC15IFIKc3VkbyBzdSAtIC1jICJSIC1lIFwiaW5zdGFsbC5wYWNrYWdlcygnc2hpbnknLCByZXBvcz0naHR0cHM6Ly9jcmFuLnJzdHVkaW8uY29tLycpXCIiCnN1ZG8geXVtIGluc3RhbGwgLXkgZ2RlYmktY29yZQpzdWRvIHl1bSBpbnN0YWxsIC15IGxpYmN1cmwtZGV2ZWwKc3VkbyB5dW0gaW5zdGFsbCAteSBsaWJ4bWwyLWRldmVsCndnZXQgaHR0cHM6Ly9kb3dubG9hZDMucnN0dWRpby5vcmcvY2VudG9zNy94ODZfNjQvc2hpbnktc2VydmVyLTEuNS4xOC45ODcteDg2XzY0LnJwbQpzdWRvIHl1bSBpbnN0YWxsIC15IC0tbm9ncGdjaGVjayBzaGlueS1zZXJ2ZXItMS41LjE4Ljk4Ny14ODZfNjQucnBtCnN1ZG8gc3UgLSAtYyAiUiAtZSBcImluc3RhbGwucGFja2FnZXMoYygndGlkeXZlcnNlJywgJ2pzb25saXRlJywgJ3NoaW55dGhlbWVzJywgJ2RwbHlyJywgJ3Bsb3RseScsICdwbmcnLCAnZ2dwbG90MicsICdnZ2pveScpLCByZXBvcz0naHR0cHM6Ly9jcmFuLnJzdHVkaW8uY29tLycpXCIiCndnZXQgaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3Bhd2VsOTlrL1N0dWRpYS9tYXN0ZXIvUi9UZWNobmlraVdpenVhbGl6YWNqaURhbnljaC9Qcm9qZWt0Mi9uZXdlc3QvYXBwLlIKd2dldCBodHRwczovL2dpdGh1Yi5jb20vcGF3ZWw5OWsvU3R1ZGlhL3Jhdy9tYXN0ZXIvUi9UZWNobmlraVdpenVhbGl6YWNqaURhbnljaC9Qcm9qZWt0Mi9uZXdlc3QvY2xpY2ttZS5wbmcKc3VkbyBybSAtciAvc3J2L3NoaW55LXNlcnZlci8qCnN1ZG8gbXYgY2xpY2ttZS5wbmcgL3Nydi9zaGlueS1zZXJ2ZXIKc3VkbyBtdiBhcHAuUiAvc3J2L3NoaW55LXNlcnZlcg==
+       - !Ref ApplicationSecurityGroup
+      UserData: IyEvYmluL2Jhc2gKc3VkbyBlY2hvICJkZWIgaHR0cDovL2NyYW4ucnN0dWRpby5jb20vYmluL2xpbnV4L3VidW50dSB0cnVzdHkvIiB8IHN1ZG8gdGVlIC1hIC9ldGMvYXB0L3NvdXJjZXMubGlzdApncGcgLS1rZXlzZXJ2ZXIga2V5c2VydmVyLnVidW50dS5jb20gLS1yZWN2LWtleSBFMjk4QTNBODI1QzBENjVERkQ1N0NCQjY1MTcxNjYxOUUwODREQUI5CmdwZyAtYSAtLWV4cG9ydCBFMjk4QTNBODI1QzBENjVERkQ1N0NCQjY1MTcxNjYxOUUwODREQUI5CnN1ZG8geXVtIC15IHVwZGF0ZQpzdWRvIHl1bSBpbnN0YWxsIC15IGVwZWwtcmVsZWFzZQpzdWRvIHl1bSBpbnN0YWxsIC15IFIKc3VkbyBzdSAtIC1jICJSIC1lIFwiaW5zdGFsbC5wYWNrYWdlcygnc2hpbnknLCByZXBvcz0naHR0cHM6Ly9jcmFuLnJzdHVkaW8uY29tLycpXCIiCnN1ZG8geXVtIGluc3RhbGwgLXkgZ2RlYmktY29yZQpzdWRvIHl1bSBpbnN0YWxsIC15IGxpYmN1cmwtZGV2ZWwKc3VkbyB5dW0gaW5zdGFsbCAteSBsaWJ4bWwyLWRldmVsCnN1ZG8geXVtIGluc3RhbGwgLXkgb3BlbnNzbC1kZXZlbApzdWRvIHN1IC0gLWMgIlIgLWUgXCJpbnN0YWxsLnBhY2thZ2VzKGMoJ3RpZHl2ZXJzZScsICdqc29ubGl0ZScsICdzaGlueXRoZW1lcycsICdkcGx5cicsICdwbG90bHknLCAncG5nJywgJ2dncGxvdDInLCAnZ2dqb3knKSwgcmVwb3M9J2h0dHBzOi8vY3Jhbi5yc3R1ZGlvLmNvbS8nKVwiIgp3Z2V0IGh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9wYXdlbDk5ay9TdHVkaWEvbWFzdGVyL1IvVGVjaG5pa2lXaXp1YWxpemFjamlEYW55Y2gvUHJvamVrdDIvbmV3ZXN0L2FwcC5SCndnZXQgaHR0cHM6Ly9naXRodWIuY29tL3Bhd2VsOTlrL1N0dWRpYS9yYXcvbWFzdGVyL1IvVGVjaG5pa2lXaXp1YWxpemFjamlEYW55Y2gvUHJvamVrdDIvbmV3ZXN0L2NsaWNrbWUucG5nCndnZXQgaHR0cHM6Ly9kb3dubG9hZDMucnN0dWRpby5vcmcvY2VudG9zNy94ODZfNjQvc2hpbnktc2VydmVyLTEuNS4xOC45ODcteDg2XzY0LnJwbQpzdWRvIHl1bSBpbnN0YWxsIC15IC0tbm9ncGdjaGVjayBzaGlueS1zZXJ2ZXItMS41LjE4Ljk4Ny14ODZfNjQucnBtCnN1ZG8gcm0gLXIgL3Nydi9zaGlueS1zZXJ2ZXIvKgpzdWRvIG12IGNsaWNrbWUucG5nIC9zcnYvc2hpbnktc2VydmVyCnN1ZG8gbXYgYXBwLlIgL3Nydi9zaGlueS1zZXJ2ZXI=
 
 
 #end Auto scaling group
 
 #Database
 
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: DBSubnetGroup for RDS  instance
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
 
+  DatabaseInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: FinalProjDB
+      DBName: finalDB
+      Engine: PostGre
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterPassword
+      DBInstanceClass: db.t3.micro
+      BackupRetentionPeriod: 7
+      CopyTagsToSnapshot: true
+      StorageType: gp2
+      AllocatedStorage: 20
+      PubliclyAccessible: false
+      MultiAZ: true
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups: 
+        - !Ref DBSecurityGroup
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription:
+        !Sub 'Internal Security group for ${AWS::StackName}'
+      VpcId: !Ref VPC
+
+  AllowaccessfromLoadBalancer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref DBSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref ApplicationSecurityGroup
+
+  BastionAccessToDB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref DBSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref BastionSecurityGroup
 
 
 
