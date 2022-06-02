@@ -305,7 +305,7 @@ Resources:
   ApplicationKey:
     Type: AWS::EC2::KeyPair
     Properties: 
-      KeyName: app
+      KeyName: application
 
 #End Bastion
 
