@@ -249,14 +249,14 @@ Resources:
   BastionInstance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: 
-        'Fn::FindInMap':
-          - AWSRegionArch2AMI
-          - Ref: 'AWS::Region'
-          - 'Fn::FindInMap':
-              - AWSInstanceType2Arch
-              - t2.micro
-              - Arch
+      ImageId: ami-0022f774911c1d690
+#        'Fn::FindInMap':
+#         - AWSRegionArch2AMI
+#          - Ref: 'AWS::Region'
+#          - 'Fn::FindInMap':
+#              - AWSInstanceType2Arch
+#              - t2.micro
+#              - Arch
       InstanceType: t2.micro
       KeyName: vockey
       SubnetId: !Ref PublicSubnet1
@@ -466,14 +466,14 @@ Resources:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       LaunchConfigurationName: projecLT
-      ImageId: 
-        'Fn::FindInMap':
-          - AWSRegionArch2AMI
-          - Ref: 'AWS::Region'
-          - 'Fn::FindInMap':
-              - AWSInstanceType2Arch
-              - t2.micro
-              - Arch
+      ImageId: ami-0022f774911c1d690
+#        'Fn::FindInMap':
+#          - AWSRegionArch2AMI
+#          - Ref: 'AWS::Region'
+#          - 'Fn::FindInMap':
+#             - AWSInstanceType2Arch
+#             - t2.micro
+#             - Arch
       InstanceType: t2.micro 
       KeyName: !Ref ApplicationKey
       SecurityGroups: 
@@ -493,24 +493,24 @@ Resources:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
 
-  DatabaseInstance:
-    Type: AWS::RDS::DBInstance
-    Properties:
-      DBInstanceIdentifier: FinalProjDB
-      DBName: finalDB
-      Engine: postgres
-      MasterUsername: !Ref MasterUsername
-      MasterUserPassword: !Ref MasterPassword
-      DBInstanceClass: db.t3.micro
-      BackupRetentionPeriod: 7
-      CopyTagsToSnapshot: true
-      StorageType: gp2
-      AllocatedStorage: 20
-      PubliclyAccessible: false
-      MultiAZ: true
-      DBSubnetGroupName: !Ref DbSubnetGroup
-      VPCSecurityGroups: 
-        - !Ref DBSecurityGroup
+#  DatabaseInstance:
+#    Type: AWS::RDS::DBInstance
+#    Properties:
+#      DBInstanceIdentifier: FinalProjDB
+#      DBName: finalDB
+#      Engine: postgres
+#      MasterUsername: !Ref MasterUsername
+#      MasterUserPassword: !Ref MasterPassword
+#      DBInstanceClass: db.t3.micro
+#      BackupRetentionPeriod: 7
+#      CopyTagsToSnapshot: true
+#      StorageType: gp2
+#      AllocatedStorage: 20
+#      PubliclyAccessible: false
+#      MultiAZ: true
+#      DBSubnetGroupName: !Ref DbSubnetGroup
+#      VPCSecurityGroups: 
+#        - !Ref DBSecurityGroup
 
   DBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
