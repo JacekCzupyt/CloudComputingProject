@@ -80,8 +80,8 @@ server <- function(input, output, session) {
   
     selected_spotidane <- reactiveValues(    #po prostu zbior wartosci reaktywnych - nie sugeruj sie nazwa
         selected = character(),     #nazwa artysty zebrana przez klikniecie na pierwszym wykresie
-        x1  = data_frame(),      #ramka danych tworzona do przedstawienia pierwszego wykresu
-        choices  = data_frame(),  #zbior wszystkich artystow, ktorzy byli wyswietlani 
+        x1  = tibble(),      #ramka danych tworzona do przedstawienia pierwszego wykresu
+        choices  = tibble(),  #zbior wszystkich artystow, ktorzy byli wyswietlani 
         clicked = numeric(),   #potrzebne do sczytania wspolrzednej y klikniecia mysza na pierwszym wykresie
         click = FALSE, # flaga potrzebna do klikania i odklikiwania artystow - wazna!! decyduje ktory wykres sie wyswietla 
         comeback_possible = FALSE, # do powrotu z drugiego wykresu
@@ -341,7 +341,7 @@ server <- function(input, output, session) {
               }
             x <- selected_spotidane[["x1"]]
             selected_spotidane$choices <- selected_spotidane[["x1"]]$artistName
-            if(nrow(selected_spotidane[["x1"]])==0 || is.na(selected_spotidane[["x1"]][["artistName"]])) {#jesli nie mamy zadnych danych
+            if(nrow(selected_spotidane[["x1"]])==0 || all(is.na(selected_spotidane[["x1"]][["artistName"]]))) {#jesli nie mamy zadnych danych
                 plot.new()
                 text(0.5,0.5,"Wybrany zakres dat nie zwrócił żadnych wyników dla danego pliku")
             }
@@ -443,8 +443,8 @@ server <- function(input, output, session) {
                     dayparts <- paste(rep(weekdays(date("2020-01-20") + 0:6, abbreviate = TRUE), each = 4), c("0:00","6:00", "12:00", "18:00"))
                     lackingtimey <-which(!dayparts %in% y[["pora"]])
                     lackingtimey2 <- which(!dayparts %in% y2[["pora"]])
-                    y <- rbind(y, data_frame(pora = dayparts[lackingtimey], n = rep(0, length(lackingtimey)), grupa = rep(1, length(lackingtimey))))
-                    y2 <- rbind(y2, data_frame(pora = dayparts[lackingtimey2], n = rep(0, length(lackingtimey2)), grupa = rep(2, length(lackingtimey2))))
+                    y <- rbind(y, tibble(pora = dayparts[lackingtimey], n = rep(0, length(lackingtimey)), grupa = rep(1, length(lackingtimey))))
+                    y2 <- rbind(y2, tibble(pora = dayparts[lackingtimey2], n = rep(0, length(lackingtimey2)), grupa = rep(2, length(lackingtimey2))))
                     
                     
                     y <- y[match(dayparts, y$pora),]   #aby ramka danych byla w kolejnosci dni tygodnia - przydatne do tooltipa
