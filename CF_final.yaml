@@ -361,7 +361,7 @@ Resources:
     DependsOn: LoadBalancerSecurityGroup
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: Final project Load Balancer
+      Name: FinalProjectLoadBalancer
       Scheme: internet-facing
       Type: application
       Subnets: 
