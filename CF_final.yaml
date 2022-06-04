@@ -1,7 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Parameters:
-
   EnvironmentName:
     Description: An environment name that is prefixed to resource names
     Type: String
@@ -41,7 +40,7 @@ Parameters:
     Description: Minimum number of EC2 instances to launch
     Type: Number
     Default: 2
-  
+
   InstanceCountMax:
     Description: Maximum number of EC2 instances to launch
     Type: Number
@@ -59,13 +58,12 @@ Parameters:
     Type: String
     Default: postgres
   MasterPassword:
-    NoEcho: 'true'
+    NoEcho: "true"
     Description: Database password.
     Type: String
-    MinLength: '8'
+    MinLength: "8"
     AllowedPattern: "[a-zA-Z0-9!?]*"
     ConstraintDescription: Must only contain upper and lowercase letters and numbers
-
 
 Mappings:
   AWSInstanceType2Arch:
@@ -107,7 +105,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      AvailabilityZone: !Select [0, !GetAZs ""]
       CidrBlock: !Ref PublicSubnet1CIDR
       MapPublicIpOnLaunch: true
       Tags:
@@ -118,7 +116,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      AvailabilityZone: !Select [1, !GetAZs ""]
       CidrBlock: !Ref PublicSubnet2CIDR
       MapPublicIpOnLaunch: true
       Tags:
@@ -129,7 +127,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      AvailabilityZone: !Select [0, !GetAZs ""]
       CidrBlock: !Ref PrivateSubnet1CIDR
       MapPublicIpOnLaunch: false
       Tags:
@@ -140,7 +138,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      AvailabilityZone: !Select [1, !GetAZs ""]
       CidrBlock: !Ref PrivateSubnet2CIDR
       MapPublicIpOnLaunch: false
       Tags:
@@ -199,7 +197,6 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet2
 
-
   PrivateRouteTable1:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -242,21 +239,20 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable2
       SubnetId: !Ref PrivateSubnet2
 
+  #Up to this point VPC and subnets creation
 
-#Up to this point VPC and subnets creation
-
-#Bastion config 
+  #Bastion config
   BastionInstance:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: ami-0022f774911c1d690
-#        'Fn::FindInMap':
-#         - AWSRegionArch2AMI
-#          - Ref: 'AWS::Region'
-#          - 'Fn::FindInMap':
-#              - AWSInstanceType2Arch
-#              - t2.micro
-#              - Arch
+      #        'Fn::FindInMap':
+      #         - AWSRegionArch2AMI
+      #          - Ref: 'AWS::Region'
+      #          - 'Fn::FindInMap':
+      #              - AWSInstanceType2Arch
+      #              - t2.micro
+      #              - Arch
       InstanceType: t2.micro
       KeyName: vockey
       SubnetId: !Ref PublicSubnet1
@@ -290,9 +286,6 @@ Resources:
       ToPort: 22
       DestinationSecurityGroupId: !Ref ApplicationSecurityGroup
 
-
-
-
   ApplicationAllowInboundSSHFromBastion:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -304,17 +297,17 @@ Resources:
 
   ApplicationKey:
     Type: AWS::EC2::KeyPair
-    Properties: 
+    Properties:
       KeyName: application
 
-#End Bastion
+  #End Bastion
 
-#Cognito
+  #Cognito
 
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UsernameConfiguration: 
+      UsernameConfiguration:
         CaseSensitive: false
       AutoVerifiedAttributes:
         - email
@@ -325,17 +318,17 @@ Resources:
           Mutable: false
           Required: true
 
-
   UserPoolClient:
-    DependsOn: LoadBalancer
-    DependsOn: ALBListener
+    DependsOn:
+      - LoadBalancer
+      - ALBListener
     Type: AWS::Cognito::UserPoolClient
     Properties:
       ClientName: !Sub ${CognitoDomain}-user-pool
       GenerateSecret: true
       UserPoolId: !Ref UserPool
-      CallbackURLs: 
-        - !Sub https://${LoadBalancer.DNSName} 
+      CallbackURLs:
+        - !Sub https://${LoadBalancer.DNSName}
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthFlows:
         - code
@@ -345,17 +338,15 @@ Resources:
       SupportedIdentityProviders:
         - COGNITO
 
-
   UserPoolTestDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
       UserPoolId: !Ref UserPool
       Domain: !Ref CognitoDomain
 
-#End Cognito
+  #End Cognito
 
-#Load Balancer
-  
+  #Load Balancer
 
   LoadBalancer:
     DependsOn: LoadBalancerSecurityGroup
@@ -364,13 +355,12 @@ Resources:
       Name: FinalProjectLoadBalancer
       Scheme: internet-facing
       Type: application
-      Subnets: 
+      Subnets:
         - Ref: PublicSubnet1
         - Ref: PublicSubnet2
-      SecurityGroups: 
+      SecurityGroups:
         - Ref: LoadBalancerSecurityGroup
       IpAddressType: ipv4
-
 
   ALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -398,28 +388,34 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Enable HTTP access on port 443
-      VpcId:
-        Ref: VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 0
-          ToPort: 65535
-          CidrIp: 0.0.0.0/0
+      VpcId: !Ref VPC
 
-#End Load Balancer
+  HttpToLoadBalancer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
 
-#Auto Scaling Group
+  HttpsToLoadBalancer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 0.0.0.0/0
+
+  #End Load Balancer
+
+  #Auto Scaling Group
 
   ApplicationSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription:
-        !Sub 'Internal Security group for ${AWS::StackName}'
+      GroupDescription: !Sub "Internal Security group for ${AWS::StackName}"
       VpcId: !Ref VPC
 
   AllowaccessfromLoadBalancerToApplication:
@@ -440,8 +436,6 @@ Resources:
       ToPort: 22
       SourceSecurityGroupId: !Ref BastionSecurityGroup
 
-  
-
   WebServerAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -459,7 +453,7 @@ Resources:
         - Key: Name
           Value: AS-WebServer
           PropagateAtLaunch: true
-      TargetGroupARNs: 
+      TargetGroupARNs:
         - !Ref ALBTargetGroup
 
   WebServerLaunchTemplate:
@@ -467,23 +461,41 @@ Resources:
     Properties:
       LaunchConfigurationName: projecLT
       ImageId: ami-0022f774911c1d690
-#        'Fn::FindInMap':
-#          - AWSRegionArch2AMI
-#          - Ref: 'AWS::Region'
-#          - 'Fn::FindInMap':
-#             - AWSInstanceType2Arch
-#             - t2.micro
-#             - Arch
-      InstanceType: t2.micro 
+      #        'Fn::FindInMap':
+      #          - AWSRegionArch2AMI
+      #          - Ref: 'AWS::Region'
+      #          - 'Fn::FindInMap':
+      #             - AWSInstanceType2Arch
+      #             - t2.micro
+      #             - Arch
+      InstanceType: t2.micro
       KeyName: !Ref ApplicationKey
-      SecurityGroups: 
-       - !Ref ApplicationSecurityGroup
-      UserData: IyEvYmluL2Jhc2gKZXhlYyA+ID4oc3VkbyB0ZWUgL3Zhci9sb2cvdXNlci1kYXRhLmxvZ3xzdWRvIGxvZ2dlciAtdCB1c2VyLWRhdGEgLXMgMj5zdWRvIC9kZXYvY29uc29sZSkgMj4mMQpzdWRvIHl1bSAteSB1cGRhdGUKc3VkbyBhbWF6b24tbGludXgtZXh0cmFzIGluc3RhbGwgLXkgZXBlbApzdWRvIHl1bSBpbnN0YWxsIC15IFIKc3VkbyBzdSAtIC1jICJSIC1lICJpbnN0YWxsLnBhY2thZ2VzKCdzaGlueScsIHJlcG9zPSdodHRwczovL2NyYW4ucnN0dWRpby5jb20vJTI3KS8iIgpzdWRvIHl1bSBpbnN0YWxsIC15IGdkZWJpLWNvcmUKc3VkbyB5dW0gaW5zdGFsbCAteSBsaWJjdXJsLWRldmVsCnN1ZG8geXVtIGluc3RhbGwgLXkgbGlieG1sMi1kZXZlbApzdWRvIHl1bSBpbnN0YWxsIC15IG9wZW5zc2wtZGV2ZWwKc3VkbyBzdSAtIC1jICJSIC1lICJpbnN0YWxsLnBhY2thZ2VzKGMoJ3RpZHl2ZXJzZScsICdqc29ubGl0ZScsICdzaGlueXRoZW1lcycsICdkcGx5cicsICdwbG90bHknLCAncG5nJywgJ2dncGxvdDInLCAnZ2dqb3knKSwgcmVwb3M9J2h0dHBzOi8vY3Jhbi5yc3R1ZGlvLmNvbS8lMjcpLyIiCndnZXQgaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3Bhd2VsOTlrL1N0dWRpYS9tYXN0ZXIvUi9UZWNobmlraVdpenVhbGl6YWNqaURhbnljaC9Qcm9qZWt0Mi9uZXdlc3QvYXBwLlIKd2dldCBodHRwczovL2dpdGh1Yi5jb20vcGF3ZWw5OWsvU3R1ZGlhL3Jhdy9tYXN0ZXIvUi9UZWNobmlraVdpenVhbGl6YWNqaURhbnljaC9Qcm9qZWt0Mi9uZXdlc3QvY2xpY2ttZS5wbmcKd2dldCBodHRwczovL2Rvd25sb2FkMy5yc3R1ZGlvLm9yZy9jZW50b3M3L3g4Nl82NC9zaGlueS1zZXJ2ZXItMS41LjE4Ljk4Ny14ODZfNjQucnBtCnN1ZG8geXVtIGluc3RhbGwgLXkgLS1ub2dwZ2NoZWNrIHNoaW55LXNlcnZlci0xLjUuMTguOTg3LXg4Nl82NC5ycG0Kc3VkbyBybSAtciAvc3J2L3NoaW55LXNlcnZlci8qCnN1ZG8gbXYgY2xpY2ttZS5wbmcgL3Nydi9zaGlueS1zZXJ2ZXIKc3VkbyBtdiBhcHAuUiAvc3J2L3NoaW55LXNlcnZlcg==
+      SecurityGroups:
+        - !Ref ApplicationSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          exec > >(sudo tee /var/log/user-data.log|sudo logger -t user-data -s 2>sudo /dev/console) 2>&1
+          sudo yum -y update
+          sudo amazon-linux-extras install -y epel
+          sudo yum install -y R
+          sudo su - -c "R -e \"install.packages('shiny', repos='https://cran.rstudio.com/')\""
+          sudo yum install -y gdebi-core
+          sudo yum install -y libcurl-devel
+          sudo yum install -y libxml2-devel
+          sudo yum install -y openssl-devel
+          sudo su - -c "R -e \"install.packages(c('tidyverse', 'jsonlite', 'shinythemes', 'dplyr', 'plotly', 'png', 'ggplot2', 'ggjoy'), repos='https://cran.rstudio.com/')\""
+          wget https://raw.githubusercontent.com/pawel99k/Studia/master/R/TechnikiWizualizacjiDanych/Projekt2/newest/app.R
+          wget https://github.com/pawel99k/Studia/raw/master/R/TechnikiWizualizacjiDanych/Projekt2/newest/clickme.png
+          wget https://download3.rstudio.org/centos7/x86_64/shiny-server-1.5.18.987-x86_64.rpm
+          sudo yum install -y --nogpgcheck shiny-server-1.5.18.987-x86_64.rpm
+          sudo rm -r /srv/shiny-server/*
+          sudo mv clickme.png /srv/shiny-server
+          sudo mv app.R /srv/shiny-server
 
+  #end Auto scaling group
 
-#end Auto scaling group
-
-#Database
+  #Database
 
   DbSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -493,30 +505,29 @@ Resources:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
 
-#  DatabaseInstance:
-#    Type: AWS::RDS::DBInstance
-#    Properties:
-#      DBInstanceIdentifier: FinalProjDB
-#      DBName: finalDB
-#      Engine: postgres
-#      MasterUsername: !Ref MasterUsername
-#      MasterUserPassword: !Ref MasterPassword
-#      DBInstanceClass: db.t3.micro
-#      BackupRetentionPeriod: 7
-#      CopyTagsToSnapshot: true
-#      StorageType: gp2
-#      AllocatedStorage: 20
-#      PubliclyAccessible: false
-#      MultiAZ: true
-#      DBSubnetGroupName: !Ref DbSubnetGroup
-#      VPCSecurityGroups: 
-#        - !Ref DBSecurityGroup
+  #  DatabaseInstance:
+  #    Type: AWS::RDS::DBInstance
+  #    Properties:
+  #      DBInstanceIdentifier: FinalProjDB
+  #      DBName: finalDB
+  #      Engine: postgres
+  #      MasterUsername: !Ref MasterUsername
+  #      MasterUserPassword: !Ref MasterPassword
+  #      DBInstanceClass: db.t3.micro
+  #      BackupRetentionPeriod: 7
+  #      CopyTagsToSnapshot: true
+  #      StorageType: gp2
+  #      AllocatedStorage: 20
+  #      PubliclyAccessible: false
+  #      MultiAZ: true
+  #      DBSubnetGroupName: !Ref DbSubnetGroup
+  #      VPCSecurityGroups:
+  #        - !Ref DBSecurityGroup
 
   DBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription:
-        !Sub 'Internal Security group for ${AWS::StackName}'
+      GroupDescription: !Sub "Internal Security group for ${AWS::StackName}"
       VpcId: !Ref VPC
 
   AllowaccessfromLoadBalancer:
@@ -536,7 +547,3 @@ Resources:
       FromPort: 5432
       ToPort: 5432
       SourceSecurityGroupId: !Ref BastionSecurityGroup
-
-
-
-
