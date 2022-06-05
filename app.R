@@ -37,6 +37,13 @@ conn <- dbConnect(
   user = l[["/rds/database_user"]],
   password = l[["/rds/database_password"]])
 
+if(!dbExistsTable(conn, db_table_name)){
+  table_columns <- c('id', 'userid', 'updatedat', 'name', 'content')
+  table_columns_types <- c('serial', 'int', 'timestamp default current_timestamp', 'varchar(255)', 'jsonb')
+  names(table_columns_types) <- table_columns
+  dbCreateTable(conn, db_table_name, table_columns_types)
+}
+
 # print(dbGetQuery(conn, str_interp("SELECT id, updatedat, name FROM ${db_table_name} WHERE userid = 42")))
 
 
