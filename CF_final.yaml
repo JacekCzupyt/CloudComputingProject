@@ -64,6 +64,18 @@ Parameters:
     MinLength: "8"
     AllowedPattern: "[a-zA-Z0-9!?]*"
     ConstraintDescription: Must only contain upper and lowercase letters and numbers
+  DatabaseName:
+    Description: Database name.
+    Type: String
+    Default: postgres
+  DatabaseTableName:
+    Description: Default database table name.
+    Type: String
+    Default: postgres
+  DatabasePort:
+    Description: Database port.
+    Type: Number
+    Default: 5432
 
   LatestAmiId:
     Description: Region specific image from the Parameter Store
@@ -515,24 +527,25 @@ Resources:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
 
-  #  DatabaseInstance:
-  #    Type: AWS::RDS::DBInstance
-  #    Properties:
-  #      DBInstanceIdentifier: FinalProjDB
-  #      DBName: finalDB
-  #      Engine: postgres
-  #      MasterUsername: !Ref MasterUsername
-  #      MasterUserPassword: !Ref MasterPassword
-  #      DBInstanceClass: db.t3.micro
-  #      BackupRetentionPeriod: 7
-  #      CopyTagsToSnapshot: true
-  #      StorageType: gp2
-  #      AllocatedStorage: 20
-  #      PubliclyAccessible: false
-  #      MultiAZ: true
-  #      DBSubnetGroupName: !Ref DbSubnetGroup
-  #      VPCSecurityGroups:
-  #        - !Ref DBSecurityGroup
+  DatabaseInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: FinalProjDB
+      DBName: !Ref DatabaseName
+      Engine: postgres
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterPassword
+      Port: !Ref DatabasePort
+      DBInstanceClass: db.t3.micro
+      BackupRetentionPeriod: 7
+      CopyTagsToSnapshot: true
+      StorageType: gp2
+      AllocatedStorage: 20
+      PubliclyAccessible: false
+      MultiAZ: true
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DBSecurityGroup
 
   DBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -545,8 +558,8 @@ Resources:
     Properties:
       GroupId: !Ref DBSecurityGroup
       IpProtocol: tcp
-      FromPort: 5432
-      ToPort: 5432
+      FromPort: !Ref DatabasePort
+      ToPort: !Ref DatabasePort
       SourceSecurityGroupId: !Ref ApplicationSecurityGroup
 
   BastionAccessToDB:
@@ -554,6 +567,55 @@ Resources:
     Properties:
       GroupId: !Ref DBSecurityGroup
       IpProtocol: tcp
-      FromPort: 5432
-      ToPort: 5432
+      FromPort: !Ref DatabasePort
+      ToPort: !Ref DatabasePort
       SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+  MasterUsernameParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /rds/database_user
+      Tier: Standard
+      Type: String
+      Value: !Ref MasterUsername
+
+  MasterPasswordParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /rds/database_password
+      Tier: Standard
+      Type: String
+      Value: !Ref MasterPassword
+
+  DatabaseNameParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /rds/database_name
+      Tier: Standard
+      Type: String
+      Value: !Ref DatabaseName
+
+  DatabaseTableNameParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /rds/table_name
+      Tier: Standard
+      Type: String
+      Value: !Ref DatabaseTableName
+
+  DatabasePortParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /rds/database_port
+      Tier: Standard
+      Type: String
+      Value: !Ref DatabasePort
+
+  DatabaseEndpointParam:
+    Type: AWS::SSM::Parameter
+    DependsOn: DatabaseInstance
+    Properties:
+      Name: /rds/database_endpoint
+      Tier: Standard
+      Type: String
+      Value: !GetAtt DatabaseInstance.Endpoint.Address
