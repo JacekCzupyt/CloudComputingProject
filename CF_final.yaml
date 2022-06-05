@@ -65,6 +65,11 @@ Parameters:
     AllowedPattern: "[a-zA-Z0-9!?]*"
     ConstraintDescription: Must only contain upper and lowercase letters and numbers
 
+  LatestAmiId:
+    Description: Region specific image from the Parameter Store
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: ami-0022f774911c1d690
+
 Mappings:
   AWSInstanceType2Arch:
     t2.micro:
@@ -460,7 +465,7 @@ Resources:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       LaunchConfigurationName: projecLT
-      ImageId: ami-0022f774911c1d690
+      ImageId: !Ref LatestAmiId
       #        'Fn::FindInMap':
       #          - AWSRegionArch2AMI
       #          - Ref: 'AWS::Region'
@@ -472,6 +477,11 @@ Resources:
       KeyName: !Ref ApplicationKey
       SecurityGroups:
         - !Ref ApplicationSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: "20"
+            VolumeType: gp2
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
