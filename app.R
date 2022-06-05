@@ -16,7 +16,6 @@ library(RPostgres)
 library(paws.management)
 library(httr)
 
-# region = system('aws configure get region', intern=T)
 region = content(GET("http://169.254.169.254/latest/meta-data/placement/region"))
 Sys.setenv(AWS_REGION = region)
 
@@ -28,7 +27,8 @@ names(l) <- lapply(l, function(x) x[1])
 l <- lapply(l, function(x) x[2])
 
 db_table_name = l[["/rds/table_name"]]
-
+  
+ 
 conn <- dbConnect(
   drv = RPostgres::Postgres(),
   dbname = l[["/rds/database_name"]],
@@ -36,6 +36,7 @@ conn <- dbConnect(
   port= l[["/rds/database_port"]],
   user = l[["/rds/database_user"]],
   password = l[["/rds/database_password"]])
+
 
 if(!dbExistsTable(conn, db_table_name)){
   table_columns <- c('id', 'userid', 'updatedat', 'name', 'content')
@@ -587,12 +588,12 @@ server <- function(input, output, session) {
   })
   ######
   observeEvent(input$save_file,{
-    print(spotidane)
     tryCatch({
       # browser()
       file_data = as.character(toJSON(spotidane$data))
       
       dbAppendTable(conn, db_table_name, data.frame(userid=42, name=input$files$name, content=file_data))
+      session$reload()
     },
     error = function(e) {
       # return a safeError if a parsing error occurs
@@ -623,7 +624,6 @@ server <- function(input, output, session) {
   })
   output$Opis <- renderUI({
     req(input$files)
-    print(input)
     if(!selected_spotidane$click){
       HTML(paste("WSKAZÓWKA:", "Użyj strzałek na klawiaturze", "   - sprawdź co się stanie!", sep="<br/>"))
     }
@@ -644,12 +644,21 @@ server <- function(input, output, session) {
         output$distPlot <- plotrender(spotidane, selected_spotidane)
       })
       
-      tags$li(
-        actionLink(paste0("button", x['id']), str_interp("${x['name']}\n${x['updatedat']} (UTC)"))
+      observeEvent(input[[paste0("delete", x['id'])]], {
+        dbSendStatement(conn, str_interp('DELETE FROM ${db_table_name} WHERE id = ${x["id"]}'))
+        session$reload()
+      })
+      tags$tr(
+        tags$td(
+          actionLink(paste0("button", x['id']), str_interp(paste("${x['name']}", "${x['updatedat']} (UTC)", sep="\n")))  
+        ),
+        tags$td(
+          actionButton(paste0("delete", x['id']), "", icon = icon("trash"))
+          )
       )
     }
     
-    tags$ul(
+    tags$table(
       apply(dbGetQuery(
         conn, str_interp("SELECT id, updatedat, name FROM ${db_table_name} WHERE userid = 42")
       ), 1, function(x) file_list_item(x))
