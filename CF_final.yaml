@@ -79,7 +79,7 @@ Parameters:
 
   LatestAmiId:
     Description: Region specific image from the Parameter Store
-    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Type: String
     Default: ami-0022f774911c1d690
 
 Mappings:
@@ -312,10 +312,10 @@ Resources:
       ToPort: 22
       SourceSecurityGroupId: !Ref BastionSecurityGroup
 
-  ApplicationKey:
-    Type: AWS::EC2::KeyPair
-    Properties:
-      KeyName: application
+  # ApplicationKey:
+  #   Type: AWS::EC2::KeyPair
+  #   Properties:
+  #     KeyName: application
 
   #End Bastion
 
@@ -476,7 +476,7 @@ Resources:
   WebServerLaunchTemplate:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      LaunchConfigurationName: projecLT
+      LaunchConfigurationName: projectLT
       ImageId: !Ref LatestAmiId
       #        'Fn::FindInMap':
       #          - AWSRegionArch2AMI
@@ -486,11 +486,11 @@ Resources:
       #             - t2.micro
       #             - Arch
       InstanceType: t2.micro
-      KeyName: !Ref ApplicationKey
+      KeyName: vockey
       SecurityGroups:
         - !Ref ApplicationSecurityGroup
       BlockDeviceMappings:
-        - DeviceName: /dev/sda1
+        - DeviceName: /dev/xvda
           Ebs:
             VolumeSize: "20"
             VolumeType: gp2
@@ -502,6 +502,10 @@ Resources:
           sudo amazon-linux-extras install -y epel
           sudo yum install -y R
           sudo su - -c "R -e \"install.packages('shiny', repos='https://cran.rstudio.com/')\""
+          sudo yum install -y gdebi-core
+          sudo yum install -y libcurl-devel
+          sudo yum install -y libxml2-devel
+          sudo yum install -y openssl-devel
           sudo yum install -y postgresql-devel
           sudo su - -c "R -e \"install.packages(c('tidyverse', 'jsonlite', 'shinythemes', 'dplyr', 'png', 'ggplot2', 'ggjoy', 'DBI', 'RPostgres', 'paws.management'), repos='https://cran.rstudio.com/')\""
           wget https://raw.githubusercontent.com/JacekCzupyt/CloudComputingProject/master/app.R
