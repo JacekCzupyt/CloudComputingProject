@@ -1,4 +1,4 @@
-PATH_TO_FILE = "../StreamingHistory0.json"
+PATH_TO_FILE = "~/Studia/repo/Studia/R/TechnikiWizualizacjiDanych/Projekt2/StreamingHistory0.json"
 
 testServer(expr = {
   session$setInputs(zima = 1)
