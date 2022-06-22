@@ -12,7 +12,7 @@ options(stringsAsFactors = FALSE)
 
 clickme <- readPNG('clickme.png')
 
-loadFile <- function(f, spotidane, selected_spotidane){
+loadFile <- function(f, spotidane, selected_spotidane, session){
   spotidane$data <- data.frame()
   selected_spotidane$click <- FALSE
   selected_spotidane$arrow_index <- 0
@@ -54,7 +54,9 @@ loadFile <- function(f, spotidane, selected_spotidane){
       spotidane$data$endTime <- as.POSIXct(spotidane$data$endTime)
     }
   }
-  enable('save_file')
+  if('AccessToken' %in% names(session$userData$cognito)){
+    enable('save_file')
+  }
   list(spotidane=spotidane, selected_spotidane=selected_spotidane)
 }
 
