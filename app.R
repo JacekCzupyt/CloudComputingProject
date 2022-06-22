@@ -15,6 +15,10 @@ library(RPostgres)
 
 library(paws.management)
 library(httr)
+source('R/utils.R')
+
+options(shiny.port = 8888)
+options(shiny.host = '0.0.0.0')
 
 region = content(GET("http://169.254.169.254/latest/meta-data/placement/region"))
 Sys.setenv(AWS_REGION = region)
@@ -28,6 +32,7 @@ l <- lapply(l, function(x) x[2])
 
 db_table_name = l[["/rds/table_name"]]
 
+cognito_client_id <- "44rtrneb46qes63ekn4brji691"  # TODO: l[["/cognito/client"]]
 
 conn <- dbConnect(
   drv = RPostgres::Postgres(),
@@ -37,29 +42,29 @@ conn <- dbConnect(
   user = l[["/rds/database_user"]],
   password = l[["/rds/database_password"]])
 
-
+# TODO: handle userid
 if(!dbExistsTable(conn, db_table_name)){
   table_columns <- c('id', 'userid', 'updatedat', 'name', 'content')
   table_columns_types <- c('serial', 'int', 'timestamp default current_timestamp', 'varchar(255)', 'jsonb')
   names(table_columns_types) <- table_columns
   dbCreateTable(conn, db_table_name, table_columns_types)
 }
-print(dbGetQuery(conn, str_interp("SELECT id, updatedat, name FROM ${db_table_name} WHERE userid = 42")))
+# print(dbGetQuery(conn, str_interp("SELECT id, updatedat, name FROM ${db_table_name} WHERE userid = 42")))
 
 ui <- fluidPage(theme = shinytheme("yeti"),
                 
                 useShinyjs(),
                 sidebarLayout(
                   sidebarPanel(width=4,
-                               titlePanel("SpotiData - sprawdź swoje statystyki słuchania platformy Spotify", windowTitle = "SpotiData"),
+                               titlePanel("SpotiData - check out your Spotify stats", windowTitle = "SpotiData"),
                                hr(),
-                               actionButton("zima", "Zima", width = "110px"),
-                               actionButton("wiosna", "Wiosna", width = "110px"),
+                               actionButton("zima", "Winter", width = "150px"),
+                               actionButton("wiosna", "Spring", width = "150px"),
                                br(),
-                               actionButton("lato", "Lato", width = "110px"),
-                               actionButton("jesien", "Jesień", width = "110px"),
+                               actionButton("lato", "Summer", width = "150px"),
+                               actionButton("jesien", "Autumn", width = "150px"),
                                br(),
-                               actionButton("resetdat", "Reset dat", width = "224px"),
+                               actionButton("resetdat", "Dates reset", width = "304px"),
                                # hr(),
                                # dateRangeInput("daterange1", "Zakres dat:",
                                #                start = "2018-12-01",
@@ -68,12 +73,18 @@ ui <- fluidPage(theme = shinytheme("yeti"),
                                #                weekstart = 1,
                                #                separator = " do "),
                                hr(),
-                               fileInput('files', 'Załaduj swoje dane:', multiple = TRUE,
+                               textInput("text_login", label=NULL, placeholder = "Login", width='304px'),
+                               passwordInput("text_passwd", label=NULL, placeholder = "Password", width='304px'),
+                               actionButton("log_in", "Sign in", width = '150px'),
+                               actionButton("register", "Sign up", width = '150px'),
+                               uiOutput('login_info'),
+                               hr(),
+                               fileInput('files', 'Load your data:', multiple = TRUE,
                                          accept = c("text/csv",
                                                     "text/comma-separated-values,text/plain",
                                                     ".csv", ".json"),
-                                         buttonLabel = "Wgraj pliki",
-                                         placeholder = "Brak pliku",
+                                         buttonLabel = "Load file",
+                                         placeholder = "No file",
                                          width = "220px"),
                                tags$script('
                                      pressedKeyCount = 0;
@@ -81,7 +92,7 @@ ui <- fluidPage(theme = shinytheme("yeti"),
                                       Shiny.onInputChange("pressedKey", pressedKeyCount++);
                                       Shiny.onInputChange("key", e.which);
                                       });'),
-                               actionButton("save_file", "Zapisz plik", width = '100px', disabled=T),
+                               actionButton("save_file", "Save file", width = '150px', disabled=T),
                                hr(),
                                uiOutput('file_list'),
                                hr(),
@@ -281,13 +292,64 @@ server <- function(input, output, session) {
       # browser()
       file_data = as.character(toJSON(spotidane$data))
       
-      dbAppendTable(conn, db_table_name, data.frame(userid=42, name=input$files$name, content=file_data))
-      session$reload()
+      dbAppendTable(conn, db_table_name, data.frame(userid=session$userData$cognito$IdToken, name=input$files$name, content=file_data))
+      # TODO: reload list files
     },
     error = function(e) {
       # return a safeError if a parsing error occurs
       stop(safeError(e))
     })
+  })
+  
+  observeEvent(input$log_in,{
+  output$login_info <- renderUI("")
+    login_username <- input$text_login
+    login_password <- input$text_passwd
+    
+    resp <- POST(paste0("https://cognito-idp.", region, ".amazonaws.com/"), add_headers("X-Amz-Target"="AWSCognitoIdentityProviderService.InitiateAuth", "Content-Type"="application/x-amz-json-1.1"),
+                 body=list("AuthParameters"=list("USERNAME"=login_username, "PASSWORD"=login_password), "AuthFlow"="USER_PASSWORD_AUTH", "ClientId"=cognito_client_id), encode='json')
+    json_resp <- fromJSON(rawToChar(content(resp)))
+    if(resp$status_code == 200){
+      session$userData$cognito <- json_resp$AuthenticationResult
+      print(session$userData$cognito)
+      output$login_info <- renderUI("You are logged in")
+      
+      output$file_list <- renderUI({
+
+        file_list_item <- function(x){
+          observeEvent(input[[paste0("button", x['id'])]], {
+            loadFile(dbGetQuery(conn, str_interp('SELECT content FROM ${db_table_name} WHERE id = ${x["id"]}')), spotidane, selected_spotidane, session)
+            output$distPlot <- plotrender(spotidane, selected_spotidane)
+          })
+    
+          observeEvent(input[[paste0("delete", x['id'])]], {
+            dbSendStatement(conn, str_interp('DELETE FROM ${db_table_name} WHERE id = ${x["id"]}'))
+            # TODO: reload list files
+          })
+          tags$tr(
+            tags$td(
+              actionLink(paste0("button", x['id']), str_interp(paste("${x['name']}", "${x['updatedat']} (UTC)", sep="\n")))
+            ),
+            tags$td(
+              actionButton(paste0("delete", x['id']), "", icon = icon("trash"))
+              )
+          )
+        }
+    
+        tags$table(
+          apply(dbGetQuery(
+            conn, str_interp("SELECT id, updatedat, name FROM ${db_table_name} WHERE userid = '${session$userData$cognito$IdToken}'")
+          ), 1, function(x) file_list_item(x))
+        )
+    })
+      
+    }
+    else{
+      output$login_info <- renderUI(json_resp$message)
+    }
+    
+    
+    
   })
   
   ######
@@ -296,7 +358,7 @@ server <- function(input, output, session) {
   observeEvent(input$files,{
     tryCatch(
       {
-        l <- loadFile(input$files, spotidane, selected_spotidane)
+        l <- loadFile(input$files, spotidane, selected_spotidane, session)
         spotidane <- l$spotidane
         selected_spotidane <- l$selected_spotidane
       },
@@ -314,44 +376,15 @@ server <- function(input, output, session) {
   output$Opis <- renderUI({
     req(input$files)
     if(!selected_spotidane$click){
-      HTML(paste("WSKAZÓWKA:", "Użyj strzałek na klawiaturze", "   - sprawdź co się stanie!", sep="<br/>"))
+      HTML(paste("HINT:", "Use your keyboard's arrows", "   - check what happens!", sep="<br/>"))
     }
     else{
-      if(selected_spotidane$window[1]){HTML(paste("WSKAZÓWKA:", "Aby dowiedzieć się więcej,", "najedź na punkt", sep="<br/>"))} #dla wykresu Pawła
+      if(selected_spotidane$window[1]){HTML(paste("HINT:", "To get to know more", "hover over a point", sep="<br/>"))} #dla wykresu Pawła
       else{
         
-        HTML(paste("WSKAZÓWKA:", "Użyj strzałek na klawiaturze", "   - tym razem na boki!", sep="<br/>"))
+        HTML(paste("HINT:", "Use your keyboard's arrows", "   - now sideways!", sep="<br/>"))
       }
     }
-  })
-  
-  output$file_list <- renderUI({
-
-    file_list_item <- function(x){
-      observeEvent(input[[paste0("button", x['id'])]], {
-        loadFile(dbGetQuery(conn, str_interp('SELECT content FROM ${db_table_name} WHERE id = ${x["id"]}')), spotidane, selected_spotidane)
-        output$distPlot <- plotrender(spotidane, selected_spotidane)
-      })
-
-      observeEvent(input[[paste0("delete", x['id'])]], {
-        dbSendStatement(conn, str_interp('DELETE FROM ${db_table_name} WHERE id = ${x["id"]}'))
-        session$reload()
-      })
-      tags$tr(
-        tags$td(
-          actionLink(paste0("button", x['id']), str_interp(paste("${x['name']}", "${x['updatedat']} (UTC)", sep="\n")))
-        ),
-        tags$td(
-          actionButton(paste0("delete", x['id']), "", icon = icon("trash"))
-          )
-      )
-    }
-
-    tags$table(
-      apply(dbGetQuery(
-        conn, str_interp("SELECT id, updatedat, name FROM ${db_table_name} WHERE userid = 42")
-      ), 1, function(x) file_list_item(x))
-    )
   })
   
   
@@ -359,5 +392,6 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui = ui, server = server)
+
 
 
