@@ -17,8 +17,8 @@ library(paws.management)
 library(httr)
 source('R/utils.R')
 
-options(shiny.port = 8888)
-options(shiny.host = '0.0.0.0')
+# options(shiny.port = 8888)
+# options(shiny.host = '0.0.0.0')
 
 region = content(GET("http://169.254.169.254/latest/meta-data/placement/region"))
 Sys.setenv(AWS_REGION = region)
@@ -32,7 +32,7 @@ l <- lapply(l, function(x) x[2])
 
 db_table_name = l[["/rds/table_name"]]
 
-cognito_client_id <- "44rtrneb46qes63ekn4brji691"  # TODO: l[["/cognito/client"]]
+cognito_client_id <- "44rtrneb46qes63ekn4brji691"  # TODO: l[["/cognito/client_id"]]
 
 conn <- dbConnect(
   drv = RPostgres::Postgres(),
@@ -42,10 +42,10 @@ conn <- dbConnect(
   user = l[["/rds/database_user"]],
   password = l[["/rds/database_password"]])
 
-# TODO: handle userid
+
 if(!dbExistsTable(conn, db_table_name)){
   table_columns <- c('id', 'userid', 'updatedat', 'name', 'content')
-  table_columns_types <- c('serial', 'int', 'timestamp default current_timestamp', 'varchar(255)', 'jsonb')
+  table_columns_types <- c('serial', 'uuid', 'timestamp default current_timestamp', 'varchar(255)', 'jsonb')
   names(table_columns_types) <- table_columns
   dbCreateTable(conn, db_table_name, table_columns_types)
 }
@@ -73,13 +73,21 @@ ui <- fluidPage(theme = shinytheme("yeti"),
                                #                weekstart = 1,
                                #                separator = " do "),
                                hr(),
+                               h5('Login'),
                                textInput("text_login", label=NULL, placeholder = "Login", width='304px'),
                                passwordInput("text_passwd", label=NULL, placeholder = "Password", width='304px'),
                                actionButton("log_in", "Sign in", width = '150px'),
                                actionButton("register", "Sign up", width = '150px'),
                                uiOutput('login_info'),
                                hr(),
-                               fileInput('files', 'Load your data:', multiple = TRUE,
+                               h5('Change password:'),
+                               passwordInput("old_passwd", label=NULL, placeholder = "Old password", width='304px'),
+                               passwordInput("new_passwd", label=NULL, placeholder = "New password", width='304px'),
+                               actionButton("password_change", "Change password", width = '150px', disabled=T),
+                               uiOutput('change_passwd'),
+                               hr(),
+                               h5('Load your data:'),
+                               fileInput('files', NULL, multiple = TRUE,
                                          accept = c("text/csv",
                                                     "text/comma-separated-values,text/plain",
                                                     ".csv", ".json"),
@@ -291,9 +299,17 @@ server <- function(input, output, session) {
     tryCatch({
       # browser()
       file_data = as.character(toJSON(spotidane$data))
+      user_id <- session$userData$user_id
+      fn <- length(input$files$name)
+      if(fn>0){
+        dbAppendTable(conn, db_table_name, data.frame(userid=rep(user_id, fn), name=input$files$name, content=file_data))
       
-      dbAppendTable(conn, db_table_name, data.frame(userid=session$userData$cognito$IdToken, name=input$files$name, content=file_data))
-      # TODO: reload list files
+        output$file_list <- renderUI({
+            update_file_list(input, tags, session, output)
+      }) 
+      }
+      
+      
     },
     error = function(e) {
       # return a safeError if a parsing error occurs
@@ -301,8 +317,25 @@ server <- function(input, output, session) {
     })
   })
   
+  observeEvent(input$register,{
+    output$login_info <- renderUI("")
+    login_username <- input$text_login
+    login_password <- input$text_passwd
+    
+    resp <- POST(paste0("https://cognito-idp.", region, ".amazonaws.com/"), add_headers("X-Amz-Target"="AWSCognitoIdentityProviderService.SignUp", "Content-Type"="application/x-amz-json-1.1"),
+                 body=list("Username"=login_username, "Password"=login_password, 'UserAttributes'=data.frame(list(Name=c("email"), Value=c('ewfefwef@wp.pl'))), "ClientId"=cognito_client_id), encode='json')
+    json_resp <- fromJSON(rawToChar(content(resp)))
+    if(resp$status_code==200){
+      output$login_info <- renderUI(paste0("You are signed up, ", login_username))
+    }
+    else{
+      output$login_info <- renderUI(resp$message)
+    }
+    
+  })
+  
   observeEvent(input$log_in,{
-  output$login_info <- renderUI("")
+    output$login_info <- renderUI("")
     login_username <- input$text_login
     login_password <- input$text_passwd
     
@@ -311,46 +344,50 @@ server <- function(input, output, session) {
     json_resp <- fromJSON(rawToChar(content(resp)))
     if(resp$status_code == 200){
       session$userData$cognito <- json_resp$AuthenticationResult
-      print(session$userData$cognito)
-      output$login_info <- renderUI("You are logged in")
       
-      output$file_list <- renderUI({
-
-        file_list_item <- function(x){
-          observeEvent(input[[paste0("button", x['id'])]], {
-            loadFile(dbGetQuery(conn, str_interp('SELECT content FROM ${db_table_name} WHERE id = ${x["id"]}')), spotidane, selected_spotidane, session)
-            output$distPlot <- plotrender(spotidane, selected_spotidane)
-          })
-    
-          observeEvent(input[[paste0("delete", x['id'])]], {
-            dbSendStatement(conn, str_interp('DELETE FROM ${db_table_name} WHERE id = ${x["id"]}'))
-            # TODO: reload list files
-          })
-          tags$tr(
-            tags$td(
-              actionLink(paste0("button", x['id']), str_interp(paste("${x['name']}", "${x['updatedat']} (UTC)", sep="\n")))
-            ),
-            tags$td(
-              actionButton(paste0("delete", x['id']), "", icon = icon("trash"))
-              )
-          )
-        }
-    
-        tags$table(
-          apply(dbGetQuery(
-            conn, str_interp("SELECT id, updatedat, name FROM ${db_table_name} WHERE userid = '${session$userData$cognito$IdToken}'")
-          ), 1, function(x) file_list_item(x))
-        )
-    })
       
+      resp_getuser <- POST(paste0("https://cognito-idp.", region, ".amazonaws.com/"), add_headers("X-Amz-Target"="AWSCognitoIdentityProviderService.GetUser", "Content-Type"="application/x-amz-json-1.1"),
+                 body=list(AccessToken=json_resp$AuthenticationResult$AccessToken), encode='json')
+      json_resp_getuser <- fromJSON(rawToChar(content(resp_getuser)))
+      print(json_resp_getuser)
+      
+      if(resp_getuser$status_code == 200){
+      
+        ua_df <- json_resp_getuser$UserAttributes
+        user_id <- ua_df[ua_df['Name']=='sub','Value'][1]
+        session$userData$user_id <- user_id
+        
+        
+        output$file_list <- renderUI({
+          update_file_list(input, tags, session, output)
+      })
+        enable('password_change')
+        output$login_info <- renderUI(paste0("You are logged in ", login_username))
+        
+      }
+      else{
+        output$login_info <- renderUI('Internal Error')
+      }
     }
     else{
       output$login_info <- renderUI(json_resp$message)
     }
     
-    
-    
   })
+  
+  observeEvent(input$password_change, {
+    resp_chpasswd <- POST(paste0("https://cognito-idp.", region, ".amazonaws.com/"),
+                         add_headers("X-Amz-Target"="AWSCognitoIdentityProviderService.ChangePassword", "Content-Type"="application/x-amz-json-1.1"),
+                 body=list(AccessToken=session$userData$cognito$AccessToken, PreviousPassword=input$old_passwd, ProposedPassword=input$new_passwd), encode='json')
+    json_resp_chpasswd <- fromJSON(rawToChar(content(resp_chpasswd)))
+    if(resp_chpasswd$status_code==200){
+      output$change_passwd <- renderUI("Pasword changed succesfully")
+    }
+    else{
+      output$change_passwd <- renderUI(json_resp_chpasswd$message)
+    }
+  })
+  
   
   ######
   # logika wczytywania plikow
@@ -392,6 +429,5 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui = ui, server = server)
-
 
 
