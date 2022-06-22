@@ -347,7 +347,7 @@ Resources:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       ClientName: !Sub ${CognitoDomain}-user-pool
-      GenerateSecret: true
+      GenerateSecret: false
       UserPoolId: !Ref UserPool
       CallbackURLs:
         - !Sub https://${LoadBalancer.DNSName}
@@ -637,3 +637,14 @@ Resources:
       Tier: Standard
       Type: String
       Value: !GetAtt DatabaseInstance.Endpoint.Address
+
+  UserPoolClientIdParam:
+    Type: AWS::SSM::Parameter
+    DependsOn: UserPoolClient
+    Properties:
+      Name: /cognito/client_id
+      Tier: Standard
+      Type: String
+      Value: !Ref UserPoolClient
+
+  Cognito
