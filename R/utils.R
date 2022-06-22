@@ -318,4 +318,42 @@ plotrender <- function(spotidane, selected_spotidane){
       
     }
   })
-}
+}# 
+
+
+
+update_file_list <- function(input, tags, session, output){
+
+    user_id <- session$userData$user_id
+
+    file_list_item <- function(x){
+          observeEvent(input[[paste0("button", x['id'])]], {
+            loadFile(dbGetQuery(conn, str_interp('SELECT content FROM ${db_table_name} WHERE id = ${x["id"]}')), spotidane, selected_spotidane, session)
+            output$distPlot <- plotrender(spotidane, selected_spotidane)
+          })
+    
+          observeEvent(input[[paste0("delete", x['id'])]], {
+            rs <- dbSendStatement(conn, str_interp('DELETE FROM ${db_table_name} WHERE id = ${x["id"]}'))
+            dbClearResult(rs)
+            output$file_list <- renderUI({
+              update_file_list(input, tags, session, output)
+            })
+            # TODO: reload list files
+          })
+          tags$tr(
+            tags$td(
+              actionLink(paste0("button", x['id']), str_interp(paste("${x['name']}", "${x['updatedat']} (UTC)", sep="\n")))
+            ),
+            tags$td(),
+            tags$td(
+              actionButton(paste0("delete", x['id']), "", icon = icon("trash"))
+              )
+          )
+        }
+    
+        tags$table(
+          apply(dbGetQuery(
+            conn, str_interp("SELECT id, updatedat, name FROM ${db_table_name} WHERE userid = '${user_id}'")
+          ), 1, function(x) file_list_item(x))
+        )
+    }
