@@ -86,6 +86,12 @@ Parameters:
     Description: Name of the iam role given to the web server instances.
     Type: String
     Default: LabRole
+  
+  emailNot:
+    Description: Email to send notification about errors
+    Type: String
+
+
 
 Mappings:
   AWSInstanceType2Arch:
@@ -347,7 +353,7 @@ Resources:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       ClientName: !Sub ${CognitoDomain}-user-pool
-      GenerateSecret: true
+      GenerateSecret: false
       UserPoolId: !Ref UserPool
       CallbackURLs:
         - !Sub https://${LoadBalancer.DNSName}
@@ -637,3 +643,65 @@ Resources:
       Tier: Standard
       Type: String
       Value: !GetAtt DatabaseInstance.Endpoint.Address
+
+  RDSnotification:
+    Type: AWS::RDS::EventSubscription
+    Properties:
+      EventCategories:
+        - failure
+        - deletion
+      SnsTopicArn: !Ref SnsForRdsEventSubscription
+      SourceIds:
+        - !Ref DatabaseInstance
+      SourceType: db-instance
+      Enabled: false  
+
+  SnsForRdsEventSubscription:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: !Ref emailNot
+          Protocol: email
+      TopicName: rds-subscription-topic
+
+  SnsForAppEventSubscription:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: !Ref emailNot
+          Protocol: email
+      TopicName: application-subscription-topic
+
+  AppHealthCheck: 
+    Type: AWS::Route53::HealthCheck
+    Properties: 
+      HealthCheckConfig: 
+        Port: 80
+        Type: HTTP
+        FullyQualifiedDomainName: !GetAtt LoadBalancer.DNSName
+        RequestInterval: 30
+        FailureThreshold: 10
+
+  AppAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: App alarm
+      AlarmDescription: Invocation alarm for my AWS Route53
+      AlarmActions:
+        - !Ref SnsForAppEventSubscription
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref AppHealthCheck
+      ComparisonOperator: LessThanThreshold
+      Statistic: Minimum
+      Threshold: 1
+      Period: 60
+      EvaluationPeriods: 60
+      DatapointsToAlarm: 60
+
+  
+
+
+
