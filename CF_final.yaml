@@ -331,38 +331,25 @@ Resources:
   #End Bastion
 
   #Cognito
-
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UsernameConfiguration:
-        CaseSensitive: false
-      AutoVerifiedAttributes:
-        - email
       UserPoolName: !Sub ${CognitoDomain}-user-pool
       Schema:
-        - Name: email
+        - Name: nickname
           AttributeDataType: String
           Mutable: false
           Required: true
 
   UserPoolClient:
-    DependsOn:
-      - LoadBalancer
-      - ALBListener
     Type: AWS::Cognito::UserPoolClient
     Properties:
       ClientName: !Sub ${CognitoDomain}-user-pool
       GenerateSecret: false
       UserPoolId: !Ref UserPool
-      CallbackURLs:
-        - !Sub https://${LoadBalancer.DNSName}
-      AllowedOAuthFlowsUserPoolClient: true
-      AllowedOAuthFlows:
-        - code
-        - implicit
-      AllowedOAuthScopes:
-        - openid
+      ExplicitAuthFlows: 
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
       SupportedIdentityProviders:
         - COGNITO
 
