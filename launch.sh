@@ -9,7 +9,7 @@ sudo yum install -y libcurl-devel
 sudo yum install -y libxml2-devel
 sudo yum install -y openssl-devel
 sudo yum install -y postgresql-devel
-sudo su - -c "R -e \"install.packages(c('tidyverse', 'jsonlite', 'shinythemes', 'dplyr', 'png', 'ggplot2', 'ggjoy', 'DBI', 'RPostgres', 'paws.management'), repos='https://cran.rstudio.com/')\""
+sudo su - -c "R -e \"install.packages(c('tidyverse', 'jsonlite', 'shinythemes', 'dplyr', 'png', 'ggplot2', 'ggjoy', 'DBI', 'RPostgres', 'paws.management', 'shinyjs'), repos='https://cran.rstudio.com/')\""
 wget https://raw.githubusercontent.com/JacekCzupyt/CloudComputingProject/master/app.R
 wget https://raw.githubusercontent.com/JacekCzupyt/CloudComputingProject/master/R/utils.R
 wget https://github.com/JacekCzupyt/CloudComputingProject/raw/master/clickme.png

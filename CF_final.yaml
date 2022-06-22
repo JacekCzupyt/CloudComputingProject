@@ -82,6 +82,11 @@ Parameters:
     Type: String
     Default: ami-0022f774911c1d690
 
+  InstanceIamRole:
+    Description: Name of the iam role given to the web server instances.
+    Type: String
+    Default: LabRole
+
 Mappings:
   AWSInstanceType2Arch:
     t2.micro:
@@ -473,6 +478,14 @@ Resources:
       TargetGroupARNs:
         - !Ref ALBTargetGroup
 
+  IamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: MyIamInstanceProfile
+      Path: "/"
+      Roles:
+        - !Ref InstanceIamRole
+
   WebServerLaunchTemplate:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
@@ -485,6 +498,7 @@ Resources:
       #             - AWSInstanceType2Arch
       #             - t2.micro
       #             - Arch
+      IamInstanceProfile: !Ref IamInstanceProfile
       InstanceType: t2.micro
       KeyName: vockey
       SecurityGroups:
@@ -507,7 +521,7 @@ Resources:
           sudo yum install -y libxml2-devel
           sudo yum install -y openssl-devel
           sudo yum install -y postgresql-devel
-          sudo su - -c "R -e \"install.packages(c('tidyverse', 'jsonlite', 'shinythemes', 'dplyr', 'png', 'ggplot2', 'ggjoy', 'DBI', 'RPostgres', 'paws.management'), repos='https://cran.rstudio.com/')\""
+          sudo su - -c "R -e \"install.packages(c('tidyverse', 'jsonlite', 'shinythemes', 'dplyr', 'png', 'ggplot2', 'ggjoy', 'DBI', 'RPostgres', 'paws.management', 'shinyjs'), repos='https://cran.rstudio.com/')\""
           wget https://raw.githubusercontent.com/JacekCzupyt/CloudComputingProject/master/app.R
           wget https://raw.githubusercontent.com/JacekCzupyt/CloudComputingProject/master/R/utils.R
           wget https://github.com/JacekCzupyt/CloudComputingProject/raw/master/clickme.png
