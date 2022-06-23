@@ -20,7 +20,8 @@ source('R/utils.R')
 # options(shiny.port = 8888)
 # options(shiny.host = '0.0.0.0')
 
-region = content(GET("http://169.254.169.254/latest/meta-data/placement/region"))
+
+region <- getRegion()
 Sys.setenv(AWS_REGION = region)
 
 ssm_ps <- ssm()
@@ -428,6 +429,7 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui = ui, server = server)
+
 
 
 
