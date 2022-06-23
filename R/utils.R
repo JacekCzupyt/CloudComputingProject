@@ -43,6 +43,9 @@ loadFile <- function(f, spotidane, selected_spotidane, session){
       #spotidane$data$endTime <- fast_strptime(spotidane$data$endTime, "%Y-%m-%d %H:%M",tz="UTC")
       spotidane$data$endTime <- as.POSIXct(spotidane$data$endTime)
     }
+    if('AccessToken' %in% names(session$userData$cognito)){
+      enable('save_file')
+    }
   }
   else if(is.data.frame(f)){
     spotidane$toBind <- as.data.frame(fromJSON(f$content))
@@ -53,9 +56,6 @@ loadFile <- function(f, spotidane, selected_spotidane, session){
       spotidane$data$endTime <- as.character(spotidane$data$endTime)
       spotidane$data$endTime <- as.POSIXct(spotidane$data$endTime)
     }
-  }
-  if('AccessToken' %in% names(session$userData$cognito)){
-    enable('save_file')
   }
   list(spotidane=spotidane, selected_spotidane=selected_spotidane)
 }
@@ -322,7 +322,7 @@ plotrender <- function(spotidane, selected_spotidane){
 
 
 
-update_file_list <- function(input, tags, session, output, spotidane){
+update_file_list <- function(input, tags, session, output, spotidane, selected_spotidane){
 
     user_id <- session$userData$user_id
 
@@ -336,13 +336,13 @@ update_file_list <- function(input, tags, session, output, spotidane){
             rs <- dbSendStatement(conn, str_interp('DELETE FROM ${db_table_name} WHERE id = ${x["id"]}'))
             dbClearResult(rs)
             output$file_list <- renderUI({
-              update_file_list(input, tags, session, output, spotidane)
+              update_file_list(input, tags, session, output, spotidane, selected_spotidane)
             })
             # TODO: reload list files
           })
           tags$tr(
             tags$td(
-              actionLink(paste0("button", x['id']), str_interp(paste("${x['name']}", "${x['updatedat']} (UTC)", sep="\n")))
+              actionButton(paste0("button", x['id']), str_interp(paste("${x['name']}", "${x['updatedat']} (UTC)", sep="\n")))
             ),
             tags$td(),
             tags$td(
