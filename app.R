@@ -32,7 +32,7 @@ l <- lapply(l, function(x) x[2])
 
 db_table_name = l[["/rds/table_name"]]
 
-cognito_client_id <- "44rtrneb46qes63ekn4brji691"  # TODO: l[["/cognito/client_id"]]
+cognito_client_id <- ssm_ps$get_parameter("/cognito/client_id")$Parameter$Value
 
 conn <- dbConnect(
   drv = RPostgres::Postgres(),
@@ -305,7 +305,7 @@ server <- function(input, output, session) {
         dbAppendTable(conn, db_table_name, data.frame(userid=rep(user_id, fn), name=input$files$name, content=file_data))
       
         output$file_list <- renderUI({
-            update_file_list(input, tags, session, output)
+            update_file_list(input, tags, session, output, spotidane)
       }) 
       }
       
@@ -359,7 +359,7 @@ server <- function(input, output, session) {
         
         
         output$file_list <- renderUI({
-          update_file_list(input, tags, session, output)
+          update_file_list(input, tags, session, output, spotidane)
       })
         enable('password_change')
         output$login_info <- renderUI(paste0("You are logged in ", login_username))

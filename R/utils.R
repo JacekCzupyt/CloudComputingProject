@@ -322,7 +322,7 @@ plotrender <- function(spotidane, selected_spotidane){
 
 
 
-update_file_list <- function(input, tags, session, output){
+update_file_list <- function(input, tags, session, output, spotidane){
 
     user_id <- session$userData$user_id
 
@@ -336,7 +336,7 @@ update_file_list <- function(input, tags, session, output){
             rs <- dbSendStatement(conn, str_interp('DELETE FROM ${db_table_name} WHERE id = ${x["id"]}'))
             dbClearResult(rs)
             output$file_list <- renderUI({
-              update_file_list(input, tags, session, output)
+              update_file_list(input, tags, session, output, spotidane)
             })
             # TODO: reload list files
           })
