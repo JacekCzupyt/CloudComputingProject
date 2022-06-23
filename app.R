@@ -306,7 +306,7 @@ server <- function(input, output, session) {
         dbAppendTable(conn, db_table_name, data.frame(userid=rep(user_id, fn), name=input$files$name, content=file_data))
       
         output$file_list <- renderUI({
-            update_file_list(input, tags, session, output, spotidane, selected_spotidane)
+            update_file_list(input, tags, session, output, spotidane, selected_spotidane, conn, db_table_name)
       }) 
       }
       
@@ -359,7 +359,7 @@ server <- function(input, output, session) {
         
         
         output$file_list <- renderUI({
-          update_file_list(input, tags, session, output, spotidane, selected_spotidane)
+          update_file_list(input, tags, session, output, spotidane, selected_spotidane, conn, db_table_name)
       })
         enable('password_change')
         output$login_info <- renderUI(paste0("You are logged in ", login_username))
