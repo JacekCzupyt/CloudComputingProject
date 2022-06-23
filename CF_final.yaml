@@ -335,12 +335,12 @@ Resources:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: !Sub ${CognitoDomain}-user-pool
+      UsernameAttributes:
+        - email
       AutoVerifiedAttributes:
         - email
       VerificationMessageTemplate:
         DefaultEmailOption: CONFIRM_WITH_LINK
-      EmailVerificationSubject: Your verification link
-      EmailVerificationMessage: Please click the link below to verify your email address.
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
