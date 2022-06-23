@@ -335,11 +335,6 @@ Resources:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: !Sub ${CognitoDomain}-user-pool
-      Schema:
-        - Name: nickname
-          AttributeDataType: String
-          Mutable: false
-          Required: true
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
