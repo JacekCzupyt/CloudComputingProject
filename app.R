@@ -57,14 +57,14 @@ ui <- fluidPage(theme = shinytheme("yeti"),
                 sidebarLayout(
                   sidebarPanel(width=4,
                                titlePanel("SpotiData - check out your Spotify stats", windowTitle = "SpotiData"),
-                               hr(),
-                               actionButton("zima", "Winter", width = "150px"),
-                               actionButton("wiosna", "Spring", width = "150px"),
-                               br(),
-                               actionButton("lato", "Summer", width = "150px"),
-                               actionButton("jesien", "Autumn", width = "150px"),
-                               br(),
-                               actionButton("resetdat", "Dates reset", width = "304px"),
+                              # hr(),
+                              # actionButton("zima", "Winter", width = "150px"),
+                              # actionButton("wiosna", "Spring", width = "150px"),
+                              # br(),
+                              # actionButton("lato", "Summer", width = "150px"),
+                              # actionButton("jesien", "Autumn", width = "150px"),
+                              # br(),
+                              # actionButton("resetdat", "Dates reset", width = "304px"),
                                # hr(),
                                # dateRangeInput("daterange1", "Zakres dat:",
                                #                start = "2018-12-01",
@@ -73,7 +73,7 @@ ui <- fluidPage(theme = shinytheme("yeti"),
                                #                weekstart = 1,
                                #                separator = " do "),
                                hr(),
-                               h5('Login'),
+                               h5('Login:'),
                                textInput("text_login", label=NULL, placeholder = "Login", width='304px'),
                                passwordInput("text_passwd", label=NULL, placeholder = "Password", width='304px'),
                                actionButton("log_in", "Sign in", width = '150px'),
@@ -305,7 +305,7 @@ server <- function(input, output, session) {
         dbAppendTable(conn, db_table_name, data.frame(userid=rep(user_id, fn), name=input$files$name, content=file_data))
       
         output$file_list <- renderUI({
-            update_file_list(input, tags, session, output, spotidane)
+            update_file_list(input, tags, session, output, spotidane, selected_spotidane)
       }) 
       }
       
@@ -329,7 +329,7 @@ server <- function(input, output, session) {
       output$login_info <- renderUI(paste0("You are signed up, ", login_username))
     }
     else{
-      output$login_info <- renderUI(resp$message)
+      output$login_info <- renderUI(json_resp$message)
     }
     
   })
@@ -349,7 +349,6 @@ server <- function(input, output, session) {
       resp_getuser <- POST(paste0("https://cognito-idp.", region, ".amazonaws.com/"), add_headers("X-Amz-Target"="AWSCognitoIdentityProviderService.GetUser", "Content-Type"="application/x-amz-json-1.1"),
                  body=list(AccessToken=json_resp$AuthenticationResult$AccessToken), encode='json')
       json_resp_getuser <- fromJSON(rawToChar(content(resp_getuser)))
-      print(json_resp_getuser)
       
       if(resp_getuser$status_code == 200){
       
@@ -359,7 +358,7 @@ server <- function(input, output, session) {
         
         
         output$file_list <- renderUI({
-          update_file_list(input, tags, session, output, spotidane)
+          update_file_list(input, tags, session, output, spotidane, selected_spotidane)
       })
         enable('password_change')
         output$login_info <- renderUI(paste0("You are logged in ", login_username))
@@ -429,5 +428,6 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui = ui, server = server)
+
 
 
