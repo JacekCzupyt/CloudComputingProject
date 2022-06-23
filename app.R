@@ -17,10 +17,11 @@ library(paws.management)
 library(httr)
 source('R/utils.R')
 
-# options(shiny.port = 8888)
-# options(shiny.host = '0.0.0.0')
+#options(shiny.port = 8888)
+#options(shiny.host = '0.0.0.0')
 
-region = content(GET("http://169.254.169.254/latest/meta-data/placement/region"))
+
+region <- getRegion()
 Sys.setenv(AWS_REGION = region)
 
 ssm_ps <- ssm()
@@ -74,7 +75,7 @@ ui <- fluidPage(theme = shinytheme("yeti"),
                                #                separator = " do "),
                                hr(),
                                h5('Login:'),
-                               textInput("text_login", label=NULL, placeholder = "Login", width='304px'),
+                               textInput("text_login", label=NULL, placeholder = "E-mail", width='304px'),
                                passwordInput("text_passwd", label=NULL, placeholder = "Password", width='304px'),
                                actionButton("log_in", "Sign in", width = '150px'),
                                actionButton("register", "Sign up", width = '150px'),
@@ -323,7 +324,7 @@ server <- function(input, output, session) {
     login_password <- input$text_passwd
     
     resp <- POST(paste0("https://cognito-idp.", region, ".amazonaws.com/"), add_headers("X-Amz-Target"="AWSCognitoIdentityProviderService.SignUp", "Content-Type"="application/x-amz-json-1.1"),
-                 body=list("Username"=login_username, "Password"=login_password, 'UserAttributes'=data.frame(list(Name=c("email"), Value=c('ewfefwef@wp.pl'))), "ClientId"=cognito_client_id), encode='json')
+                 body=list("Username"=login_username, "Password"=login_password, 'UserAttributes'=data.frame(list(Name=c("email"), Value=c(login_username))), "ClientId"=cognito_client_id), encode='json')
     json_resp <- fromJSON(rawToChar(content(resp)))
     if(resp$status_code==200){
       output$login_info <- renderUI(paste0("You are signed up, ", login_username))
@@ -428,6 +429,7 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui = ui, server = server)
+
 
 
 

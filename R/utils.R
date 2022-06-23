@@ -7,10 +7,15 @@ library(dplyr)
 library(png)
 library(ggplot2)
 library(ggjoy)
+library(httr)
 library(shinyjs)
 options(stringsAsFactors = FALSE)
 
 clickme <- readPNG('clickme.png')
+
+getRegion <- function(){
+  content(GET("http://169.254.169.254/latest/meta-data/placement/region"))
+}
 
 loadFile <- function(f, spotidane, selected_spotidane, session){
   spotidane$data <- data.frame()
@@ -357,3 +362,4 @@ update_file_list <- function(input, tags, session, output, spotidane, selected_s
           ), 1, function(x) file_list_item(x))
         )
     }
+

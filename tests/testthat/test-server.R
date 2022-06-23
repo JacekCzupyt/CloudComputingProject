@@ -1,4 +1,7 @@
-PATH_TO_FILE = "~/Studia/repo/Studia/R/TechnikiWizualizacjiDanych/Projekt2/StreamingHistory0.json"
+setwd('../../')
+source('./R/utils.R')
+source('./app.R')
+PATH_TO_FILE = "/home/ec2-user/environment/CloudComputingProject/StreamingHistory0.json"
 
 testServer(expr = {
   session$setInputs(zima = 1)
@@ -53,4 +56,12 @@ testServer(expr = {
   expect_true(is.data.frame(spotidane$data))
   expect_gt(nrow(spotidane$data), 0)
   expect_equal(colnames(spotidane$data), c("endTime", "artistName", "trackName", "msPlayed"))
+  
+  expect_type(getRegion(), 'character')
+  
+  ex_session = list(userData=list(user_id='123e4567-e89b-12d3-a456-556642440000'))
+  ex_file_list = update_file_list(NULL, shiny::tags, ex_session, NULL, NULL, NULL)
+  expect_equal(ex_file_list$name, 'table')
+  expect_equal(length(ex_file_list$attribs), 0)
   })
+
